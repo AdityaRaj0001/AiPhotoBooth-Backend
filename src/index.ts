@@ -1,3 +1,5 @@
+const fs = require('fs').promises
+const path = require('path')
 import Express, { NextFunction, Request, Response } from "express";
 import faceswap from "./FaceSwap/router/faceswap";
 import * as dotenv from 'dotenv';
@@ -25,18 +27,51 @@ app.get("/", (req: Request, res: Response) => {
     res.send("Hello World");
 });
 
-app.post("/check-app-id", (req, res) => {
-    const APP_ID = req.body.app_id;
-    console.log(APP_ID)
-    // Calculate the timestamp for the current time + 10 days
-    const tenDaysFromNow = new Date();
-    tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
-    const expirationTimestamp = tenDaysFromNow.getTime();
+const dir = path.join(__dirname, './APP_ID.json')
 
-    if (APP_ID === "GOKAPTURE" && new Date().getTime() < expirationTimestamp) {
-        res.status(200).json({ message: "App ID is valid", bool: true });
-    } else {
-        res.status(401).json({ message: "App ID is not valid", bool: false });
+app.get("/change-id", async (req, res) => {
+    try{
+        if (!req.query.id || !req.query.expire) return res.send({
+            response: false, message: "Please provide APP id and expiry"
+        })
+        // example: http://localhost:3002/change-id?id=123456789&expire=30
+        const data = await fs.readFile(dir, 'utf8');
+        const _data = JSON.parse(data);
+        _data.APP_ID = req.query.id || _data.APP_ID;
+        _data.expire = req.query.expire || _data.expire;
+        const __data = JSON.stringify(_data, null, 2);
+        await fs.writeFile(dir, __data);
+        res.send({
+            response: true,
+            message: "App id changed successfully",
+            previous: JSON.parse(data),
+            current: JSON.parse(__data)
+        })
+    } catch (err) {
+        res.send({
+            response: false,
+            message: "Error occured",
+            error: err
+        })
+    }
+})
+
+app.post("/check-app-id", async (req, res) => {
+    try {
+        const data = await fs.readFile(dir, 'utf8');
+        const parsedData = JSON.parse(data);
+        
+        const APP_ID = req.body.app_id;
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + parsedData.expire);
+
+        if (APP_ID === parsedData.APP_ID && new Date() < expirationDate) {
+            res.status(200).json({ message: "App ID is valid", bool: true });
+        } else {
+            res.status(401).json({ message: "App ID is not valid", bool: false });
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Error reading or parsing data", bool: false });
     }
 });
 
