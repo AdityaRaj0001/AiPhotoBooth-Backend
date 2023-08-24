@@ -33,7 +33,7 @@ app.post("/check-app-id", (req, res) => {
     tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
     const expirationTimestamp = tenDaysFromNow.getTime();
 
-    if (APP_ID === "GOKATPURE" && new Date().getTime() < expirationTimestamp) {
+    if (APP_ID === "GOKAPTURE" && new Date().getTime() < expirationTimestamp) {
         res.status(200).json({ message: "App ID is valid", bool: true });
     } else {
         res.status(401).json({ message: "App ID is not valid", bool: false });
