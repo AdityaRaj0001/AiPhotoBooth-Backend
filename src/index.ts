@@ -25,6 +25,21 @@ app.get("/", (req: Request, res: Response) => {
     res.send("Hello World");
 });
 
+app.post("/check-app-id", (req, res) => {
+    const APP_ID = req.body.app_id;
+    console.log(APP_ID)
+    // Calculate the timestamp for the current time + 10 days
+    const tenDaysFromNow = new Date();
+    tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
+    const expirationTimestamp = tenDaysFromNow.getTime();
+
+    if (APP_ID === "GOKATPURE" && new Date().getTime() < expirationTimestamp) {
+        res.status(200).json({ message: "App ID is valid", bool: true });
+    } else {
+        res.status(401).json({ message: "App ID is not valid", bool: false });
+    }
+});
+
 app.use("/faceswap", faceswap);
 app.use("/ai-avatar", aiAvatar);
 app.use("/mail", mail);
