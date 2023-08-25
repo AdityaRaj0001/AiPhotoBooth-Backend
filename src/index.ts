@@ -7,6 +7,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import aiAvatar from "./AiAvatar/router/aiavatar";
 import mail from "./mail/router/mail";
+import bg from "./BgChanger/router/bg";
 const app = Express();
 
 const PORT = process.env.PORT || 3002;
@@ -30,7 +31,7 @@ app.get("/", (req: Request, res: Response) => {
 const dir = path.join(__dirname, './APP_ID.json')
 
 app.get("/change-id", async (req, res) => {
-    try{
+    try {
         if (!req.query.id || !req.query.expire) return res.send({
             response: false, message: "Please provide APP id and expiry"
         })
@@ -60,11 +61,11 @@ app.post("/check-app-id", async (req, res) => {
     try {
         const data = await fs.readFile(dir, 'utf8');
         const parsedData = JSON.parse(data);
-        
+
         const APP_ID = req.body.app_id;
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + parsedData.expire);
-
+        console.log
         if (APP_ID === parsedData.APP_ID && new Date() < expirationDate) {
             res.status(200).json({ message: "App ID is valid", bool: true });
         } else {
@@ -78,6 +79,7 @@ app.post("/check-app-id", async (req, res) => {
 app.use("/faceswap", faceswap);
 app.use("/ai-avatar", aiAvatar);
 app.use("/mail", mail);
+app.use("/bg-changer", bg);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
