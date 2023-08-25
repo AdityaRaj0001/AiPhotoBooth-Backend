@@ -59,8 +59,9 @@ const Bg_Changer = async (req: Request, res: Response) => {
                     uploadImage(Buffer.from(files.input_image[0].buffer), folderName),
                     uploadImage(compositeImageBuffer, folderName)
                 ];
-                const result = await Promise.all(uploadPromises);
+                await Promise.all(uploadPromises);
                 // console.log(result)
+                res.setHeader('Content-Type', 'image/png');
             res.send(compositeImageBuffer);
         } else {
             res.status(400).send('Overlay image dimensions are too large');
