@@ -16,6 +16,6 @@
       // Add more path aliases here as needed
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": ["node_modules"]
 }
