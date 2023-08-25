@@ -1,56 +1,57 @@
 import { Request, Response } from "express";
 import sharp from 'sharp';
+import axios from "axios";
+import { toB64 } from "../../utils/bs64";
+import FormData from "form-data";
 
 const Bg_Changer = async (req: Request, res: Response) => {
     try {
-        console.log(req.files);
         const files = req.files as {
             [fieldname: string]: Express.Multer.File[];
         };
 
-        const mainImageBuffer = files.bg[0].buffer; // Buffer for the beautiful background image
-        const overlayImageBuffer = files.input_image[0].buffer; // Buffer for the image with transparent background
+        const mainImageBuffer = files.bg[0].buffer;
+        const overlayImageBuffer = files.input_image[0].buffer;
 
-        // Load overlay image dimensions
-        const overlayMetadata = await sharp(overlayImageBuffer).metadata();
-        let overlayWidth = overlayMetadata.width || 0;
-        let overlayHeight = overlayMetadata.height || 0;
-
-        // Calculate new dimensions for the overlay image (1.5 times bigger)
-        overlayWidth *= 0.5;
-        overlayHeight *= 0.5;
-        // Round down the calculated dimensions to the nearest integer
-        overlayWidth = Math.floor(overlayWidth);
-        overlayHeight = Math.floor(overlayHeight);
-        // Calculate the desired position for overlay (right-aligned)
+        const SG_IMAGE_DATA = new FormData();
+        SG_IMAGE_DATA.append('image_base64', toB64(overlayImageBuffer));
+        SG_IMAGE_DATA.append('sync', '1');
+        const bgRemovedOverlayImageBuffer = await axios.post(process.env.PIC_WISH_BASE_URL_BG_REMOVE || "", SG_IMAGE_DATA, {
+            headers: {
+                'x-api-key': process.env.PIC_WISH_API_KEY,
+            },
+        });
+        const data_bgRemovedOverlayImageBuffer = await axios.get(bgRemovedOverlayImageBuffer.data.data.image, { responseType: 'arraybuffer' })
+        const imageBuffer = Buffer.from(data_bgRemovedOverlayImageBuffer.data, 'binary');
+        const overlayMetadata = await sharp(imageBuffer).metadata();
+        const overlayWidth = Math.floor(overlayMetadata.width || 0 * 0.8);
+        const overlayHeight = Math.floor(overlayMetadata.height || 0 * 0.8);
         const mainMetadata = await sharp(mainImageBuffer).metadata();
         const mainWidth = mainMetadata.width || 0;
         const mainHeight = mainMetadata.height || 0;
-        const overlayX = mainWidth - overlayWidth; // X-coordinate
-        const overlayY = mainHeight - overlayHeight; // Y-coordinate
+        const overlayX = (mainWidth - overlayWidth) - 400;
+        const overlayY = (mainHeight - overlayHeight) - 100;
 
-        // Check if the overlay image dimensions are smaller than the main image
         if (overlayWidth <= mainWidth && overlayHeight <= mainHeight) {
-            // Resize overlay image to the new dimensions
-            const resizedOverlayBuffer = await sharp(overlayImageBuffer)
+            const resizedOverlayBuffer = await sharp(imageBuffer)
                 .resize(overlayWidth, overlayHeight)
                 .toBuffer();
 
-            // Compose images
             const compositeBuffer = await sharp(mainImageBuffer)
-                .composite([{ input: resizedOverlayBuffer, left: overlayX, top: overlayY , gravity: 'southeast' }])
+                .composite([{ input: resizedOverlayBuffer, left: overlayX, top: overlayY, gravity: 'southeast' }])
                 .toBuffer();
 
-            // res.set('Content-Type', 'image/jpeg'); // Adjust the content type based on your output format
+            // res.set('Content-Type', 'image/jpeg');
             res.send(compositeBuffer);
         } else {
-            // Handle the case where the overlay image is larger than the main image
             res.status(400).send('Overlay image dimensions are too large');
         }
-    } catch (e) {
-        // Handle errors
-        console.error(e);
-        res.status(500).send('An error occurred');
+    } catch (e: any) {
+        console.log(
+            e.response
+        )
+        // res.send(e.response.data);
+        // res.status(500).send('An error occurred');
     }
 };
 
