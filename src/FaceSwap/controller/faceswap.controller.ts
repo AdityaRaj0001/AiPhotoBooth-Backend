@@ -12,9 +12,14 @@ cloudinary.config({
     api_secret: 'DKKpZ5zkG7zuwBm0xXmPQ7Dyj5E'
 });
 
-async function uploadImage(buffer: Buffer, folder: string) {
+export async function uploadImage(buffer: Buffer, folder: string) {
     try {
         await cloudinary.uploader.upload_stream({ folder }, (error: any, result: any) => {
+            console.log(result)
+            if (error) {
+                console.error(error);
+            }
+            return result;
         }).end(buffer);
     } catch (error) {
         console.error('Error:', error);

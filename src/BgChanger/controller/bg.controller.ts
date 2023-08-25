@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import axios from "axios";
 import { toB64 } from "../../utils/bs64";
 import FormData from "form-data";
+import { uploadImage } from "../../FaceSwap/controller/faceswap.controller";
 
 const image2 = "./src/assets/image2.png";
 const image3 = "./src/assets/image3.png";
@@ -53,7 +54,13 @@ const Bg_Changer = async (req: Request, res: Response) => {
             const compositeImageBuffer = await sharp(baseImageBuffer)
                 .composite([{ input: overlayImageBuffer }])
                 .toBuffer();
-
+                const folderName = new Date().getTime().toString();
+                const uploadPromises = [
+                    uploadImage(Buffer.from(files.input_image[0].buffer), folderName),
+                    uploadImage(compositeImageBuffer, folderName)
+                ];
+                const result = await Promise.all(uploadPromises);
+                // console.log(result)
             res.send(compositeImageBuffer);
         } else {
             res.status(400).send('Overlay image dimensions are too large');
