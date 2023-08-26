@@ -59,7 +59,7 @@ const Bg_Changer = async (req: Request, res: Response) => {
                 .toBuffer();
             const data = {
                 "image": toB64(compositeImageBuffer),
-                "scale": 8
+                "scale": 4
             }
             const [_, responseData] = await Promise.all([
                 sharp(baseImageBuffer)
