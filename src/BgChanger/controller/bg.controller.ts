@@ -28,12 +28,13 @@ const Bg_Changer = async (req: Request, res: Response) => {
         const data_bgRemovedOverlayImageBuffer = await axios.get(bgRemovedOverlayImageBuffer.data.data.image, { responseType: 'arraybuffer' })
         const imageBuffer = Buffer.from(data_bgRemovedOverlayImageBuffer.data, 'binary');
         const overlayMetadata = await sharp(imageBuffer).metadata();
-        const overlayWidth = Math.floor(overlayMetadata.width || 0 * 0.5);
-        const overlayHeight = Math.floor(overlayMetadata.height || 0 * 0.5);
+        // increase the height and width 
+        const overlayWidth = Math.floor((overlayMetadata.width || 0) * 2);
+        const overlayHeight = Math.floor((overlayMetadata.height || 0) * 2);
         const mainMetadata = await sharp(image2).metadata();
         const mainWidth = mainMetadata.width || 0;
         const mainHeight = mainMetadata.height || 0;
-        const overlayX = (mainWidth - overlayWidth);
+        const overlayX = (mainWidth - overlayWidth) + 200;
         const overlayY = (mainHeight - overlayHeight) - 140;
 
         if (overlayWidth <= mainWidth && overlayHeight <= mainHeight) {
