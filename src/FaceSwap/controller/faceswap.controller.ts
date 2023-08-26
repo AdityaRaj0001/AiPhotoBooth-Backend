@@ -12,18 +12,18 @@ cloudinary.config({
     api_secret: 'DKKpZ5zkG7zuwBm0xXmPQ7Dyj5E'
 });
 
-export async function uploadImage(buffer: Buffer, folder: string) {
-    try {
-        await cloudinary.uploader.upload_stream({ folder }, (error: any, result: any) => {
-            console.log(result)
+export async function uploadImage(buffer: Buffer, folder: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream({ folder }, (error: any, result: any) => {
             if (error) {
                 console.error(error);
+                reject(error);
+            } else {
+                console.log(result);
+                resolve(result);
             }
-            return result;
         }).end(buffer);
-    } catch (error) {
-        console.error('Error:', error);
-    }
+    });
 }
 
 const SwapFace = async (req: Request, res: Response) => {
@@ -45,23 +45,25 @@ const SwapFace = async (req: Request, res: Response) => {
             },
             responseType: 'arraybuffer'
         });
-        const baseImageBuffer = await sharp(Buffer.from(response.data))
-            .resize(400, 600)
-            .toBuffer()
-        const overlayImageBuffer = await sharp(overlayImagePath)
-            .resize(400, 600)
-            .toBuffer();
+        const [baseImageBuffer, overlayImageBuffer] = await Promise.all([
+            sharp(Buffer.from(response.data, 'binary'))
+                .resize(400, 600)
+                .toBuffer(),
+            sharp(overlayImagePath)
+                .resize(400, 600)
+                .toBuffer()
+        ]);
         const compositeImageBuffer = await sharp(baseImageBuffer)
             .composite([{ input: overlayImageBuffer }])
             .toBuffer();
-        const SG_IMAGE_DATA = new FormData();
-        SG_IMAGE_DATA.append('image_base64', toB64(compositeImageBuffer));
-        SG_IMAGE_DATA.append('fix_face_only', '1');
-        SG_IMAGE_DATA.append('type', 'face');
-        SG_IMAGE_DATA.append('scale_factor', '4');
-        SG_IMAGE_DATA.append('return_type', '1');
-        SG_IMAGE_DATA.append('sync', '1');
-        const EnhancedImage = await axios.post(process.env.PIC_WISH_BASE_URL || "", SG_IMAGE_DATA, {
+        const PW_IMAGE_DATA = new FormData();
+        PW_IMAGE_DATA.append('image_base64', toB64(compositeImageBuffer));
+        PW_IMAGE_DATA.append('fix_face_only', '1');
+        PW_IMAGE_DATA.append('type', 'face');
+        PW_IMAGE_DATA.append('scale_factor', '4');
+        PW_IMAGE_DATA.append('return_type', '1');
+        PW_IMAGE_DATA.append('sync', '1');
+        const EnhancedImage = await axios.post(process.env.PIC_WISH_BASE_URL || "", PW_IMAGE_DATA, {
             headers: {
                 'x-api-key': process.env.PIC_WISH_API_KEY
             }
@@ -76,8 +78,9 @@ const SwapFace = async (req: Request, res: Response) => {
         ];
         const ResponseData = await Promise.all(uploadPromises);
         if (ResponseData) {
-            res.setHeader('Content-Type', 'image/jpeg');
-            res.send(EnhancedImage.data.data);
+            res.send({
+                image: ResponseData[1].secure_url,
+            });
         } else {
             res.status(500).json({ error: "Internal Server Error" });
         }

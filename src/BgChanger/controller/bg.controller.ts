@@ -33,8 +33,8 @@ const Bg_Changer = async (req: Request, res: Response) => {
         const mainMetadata = await sharp(image2).metadata();
         const mainWidth = mainMetadata.width || 0;
         const mainHeight = mainMetadata.height || 0;
-        const overlayX = (mainWidth - overlayWidth) - 370;
-        const overlayY = (mainHeight - overlayHeight) - 130;
+        const overlayX = (mainWidth - overlayWidth);
+        const overlayY = (mainHeight - overlayHeight) - 140;
 
         if (overlayWidth <= mainWidth && overlayHeight <= mainHeight) {
             const resizedOverlayBuffer = await sharp(imageBuffer)
@@ -45,33 +45,50 @@ const Bg_Changer = async (req: Request, res: Response) => {
                 .composite([{ input: resizedOverlayBuffer, left: overlayX, top: overlayY, gravity: 'southeast' }])
                 .toBuffer();
 
-            const baseImageBuffer = await sharp(Buffer.from(compositeBuffer))
-                .resize(600, 400)
-                .toBuffer()
-            const overlayImageBuffer = await sharp(image3)
-                .resize(600, 400)
-                .toBuffer();
+            const [baseImageBuffer, overlayImageBuffer] = await Promise.all([
+                sharp(Buffer.from(compositeBuffer))
+                    .resize(600, 400)
+                    .toBuffer(),
+                sharp(image3)
+                    .resize(600, 400)
+                    .toBuffer()
+            ]);
             const compositeImageBuffer = await sharp(baseImageBuffer)
                 .composite([{ input: overlayImageBuffer }])
                 .toBuffer();
-                const folderName = new Date().getTime().toString();
-                const uploadPromises = [
-                    uploadImage(Buffer.from(files.input_image[0].buffer), folderName),
-                    uploadImage(compositeImageBuffer, folderName)
-                ];
-                await Promise.all(uploadPromises);
-                // console.log(result)
-                res.setHeader('Content-Type', 'image/png');
-            res.send(compositeImageBuffer);
+            const data = {
+                "image": toB64(compositeImageBuffer),
+                "scale": 8
+            }
+            const [_, responseData] = await Promise.all([
+                sharp(baseImageBuffer)
+                    .composite([{ input: overlayImageBuffer }])
+                    .toBuffer(),
+                axios.post(process.env.ENHANCE_BASE_URL || "", data, {
+                    headers: {
+                        'x-api-key': process.env.API_KEY,
+                    },
+                    responseType: 'arraybuffer'
+                })
+            ]);
+            const folderName = new Date().getTime().toString();
+            const uploadPromises = [
+                uploadImage(Buffer.from(files.input_image[0].buffer), folderName),
+                uploadImage(responseData.data, folderName)
+            ];
+            const uploadResults = await Promise.all(uploadPromises);
+            // console.log(uploadResults);
+            // res.setHeader('Content-Type', 'image/png');
+            res.send({
+                image: uploadResults[1].secure_url,
+            });
         } else {
             res.status(400).send('Overlay image dimensions are too large');
         }
     } catch (e: any) {
-        console.log(
-            e.response
-        )
+        console.log(e)
         // res.send(e.response.data);
-        // res.status(500).send('An error occurred');
+        res.status(500).send('An error occurred');
     }
 };
 
